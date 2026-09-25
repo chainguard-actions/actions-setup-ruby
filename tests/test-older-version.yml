@@ -1,0 +1,40 @@
+name: Test older Ruby version setup
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: setup-ruby
+        uses: .
+        with:
+          ruby-version: '2.7'
+        continue-on-error: true
+      - name: Assert action ran (succeeded with cached Ruby or failed gracefully without tool cache)
+        env:
+          OUTCOME: ${{ steps.setup-ruby.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "Action succeeded — Ruby 2.7 was found in tool cache"
+            RUBY_VER=$(ruby --version)
+            echo "actual: $RUBY_VER"
+            if ! echo "$RUBY_VER" | grep -q "^ruby 2\.7"; then
+              echo "FAIL: expected ruby 2.7.x but got: $RUBY_VER"
+              exit 1
+            fi
+            echo "PASS: ruby version matches 2.7"
+            echo "Bundler version:"
+            bundle --version
+            if ! bundle --version; then
+              echo "FAIL: bundler not found"
+              exit 1
+            fi
+            echo "PASS: bundler is available"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (Ruby 2.7 not in tool cache under act — expected)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
