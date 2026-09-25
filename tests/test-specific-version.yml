@@ -1,0 +1,45 @@
+name: Test setup Ruby with specific version
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Pre-populate tool cache with fake Ruby 2.7.6
+        run: |
+          TOOL_CACHE="${RUNNER_TOOL_CACHE:-/opt/hostedtoolcache}"
+          VERSION="2.7.6"
+          ARCH="x64"
+          RUBY_BIN="$TOOL_CACHE/Ruby/$VERSION/$ARCH/bin"
+          mkdir -p "$RUBY_BIN"
+          printf '#!/bin/sh\ncase "$1" in\n  --version) echo "ruby 2.7.6p219 (2022-04-12 revision c9c2245c0a) [x86_64-linux]" ;;\n  -e) shift; eval "$1" ;;\n  *) echo "ruby $*" ;;\nesac\n' > "$RUBY_BIN/ruby"
+          chmod +x "$RUBY_BIN/ruby"
+          printf '#!/bin/sh\necho "3.1.6"\n' > "$RUBY_BIN/gem"
+          chmod +x "$RUBY_BIN/gem"
+          touch "$TOOL_CACHE/Ruby/$VERSION/$ARCH.complete"
+          echo "Populated: $RUBY_BIN"
+          ls -la "$RUBY_BIN"
+      - id: setup-ruby
+        uses: .
+        with:
+          ruby-version: '2.7'
+      - name: Assert Ruby 2.7.x is installed
+        run: |
+          RUBY_VERSION=$(ruby --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          echo "Ruby version: $RUBY_VERSION"
+          MAJOR=$(echo "$RUBY_VERSION" | cut -d. -f1)
+          MINOR=$(echo "$RUBY_VERSION" | cut -d. -f2)
+          if [ "$MAJOR" -ne 2 ] || [ "$MINOR" -ne 7 ]; then
+            echo "FAIL: expected Ruby 2.7.x, got $RUBY_VERSION"
+            exit 1
+          fi
+          echo "PASS: Ruby $RUBY_VERSION matches requested 2.7"
+      - name: Assert ruby is on PATH
+        run: |
+          which ruby || { echo "FAIL: ruby not found on PATH"; exit 1; }
+          echo "PASS: ruby is on PATH"
+      - name: Assert gem is on PATH
+        run: |
+          which gem || { echo "FAIL: gem not found on PATH"; exit 1; }
+          echo "PASS: gem is on PATH"

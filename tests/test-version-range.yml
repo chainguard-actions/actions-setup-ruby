@@ -1,0 +1,48 @@
+name: Test setup Ruby with version range
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Pre-populate tool cache with fake Ruby 3.2.0
+        run: |
+          TOOL_CACHE="${RUNNER_TOOL_CACHE:-/opt/hostedtoolcache}"
+          VERSION="3.2.0"
+          ARCH="x64"
+          RUBY_BIN="$TOOL_CACHE/Ruby/$VERSION/$ARCH/bin"
+          mkdir -p "$RUBY_BIN"
+          printf '#!/bin/sh\ncase "$1" in\n  --version) echo "ruby 3.2.0p0 (2022-12-25 revision a528908271) [x86_64-linux]" ;;\n  -e) shift; eval "$1" ;;\n  *) echo "ruby $*" ;;\nesac\n' > "$RUBY_BIN/ruby"
+          chmod +x "$RUBY_BIN/ruby"
+          printf '#!/bin/sh\necho "3.4.0"\n' > "$RUBY_BIN/gem"
+          chmod +x "$RUBY_BIN/gem"
+          printf '#!/bin/sh\necho "Bundler version 2.4.0"\n' > "$RUBY_BIN/bundle"
+          chmod +x "$RUBY_BIN/bundle"
+          touch "$TOOL_CACHE/Ruby/$VERSION/$ARCH.complete"
+          echo "Populated: $RUBY_BIN"
+          ls -la "$RUBY_BIN"
+      - id: setup-ruby
+        uses: .
+        with:
+          ruby-version: '>= 3.0'
+      - name: Assert Ruby >= 3.0 is installed
+        run: |
+          RUBY_VERSION=$(ruby --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          echo "Ruby version: $RUBY_VERSION"
+          MAJOR=$(echo "$RUBY_VERSION" | cut -d. -f1)
+          if [ "$MAJOR" -lt 3 ]; then
+            echo "FAIL: expected Ruby >= 3.0, got $RUBY_VERSION"
+            exit 1
+          fi
+          echo "PASS: Ruby $RUBY_VERSION satisfies >= 3.0"
+      - name: Assert ruby and gem are on PATH
+        run: |
+          which ruby || { echo "FAIL: ruby not found on PATH"; exit 1; }
+          which gem || { echo "FAIL: gem not found on PATH"; exit 1; }
+          echo "PASS: ruby and gem are on PATH"
+      - name: Assert bundler is available
+        run: |
+          which bundle || { echo "FAIL: bundle not found on PATH"; exit 1; }
+          bundle --version
+          echo "PASS: bundler is available"

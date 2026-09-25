@@ -1,0 +1,46 @@
+name: Test basic Ruby setup (default version)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Pre-populate tool cache with fake Ruby 3.1.0
+        run: |
+          TOOL_CACHE="${RUNNER_TOOL_CACHE:-/opt/hostedtoolcache}"
+          VERSION="3.1.0"
+          ARCH="x64"
+          RUBY_BIN="$TOOL_CACHE/Ruby/$VERSION/$ARCH/bin"
+          mkdir -p "$RUBY_BIN"
+          printf '#!/bin/sh\ncase "$1" in\n  --version) echo "ruby 3.1.0p0 (2021-12-25 revision fb4df44d16) [x86_64-linux]" ;;\n  -e) shift; eval "$1" ;;\n  *) echo "ruby $*" ;;\nesac\n' > "$RUBY_BIN/ruby"
+          chmod +x "$RUBY_BIN/ruby"
+          printf '#!/bin/sh\necho "3.3.0"\n' > "$RUBY_BIN/gem"
+          chmod +x "$RUBY_BIN/gem"
+          touch "$TOOL_CACHE/Ruby/$VERSION/$ARCH.complete"
+          echo "Populated: $RUBY_BIN"
+          ls -la "$RUBY_BIN"
+      - id: setup-ruby
+        uses: .
+      - name: Assert Ruby is on PATH
+        run: |
+          echo "Checking ruby is available..."
+          which ruby || { echo "FAIL: ruby not found on PATH"; exit 1; }
+          ruby --version
+          echo "PASS: ruby is available"
+      - name: Assert ruby version satisfies >= 2.4
+        run: |
+          RUBY_VERSION=$(ruby --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          echo "Ruby version: $RUBY_VERSION"
+          MAJOR=$(echo "$RUBY_VERSION" | cut -d. -f1)
+          MINOR=$(echo "$RUBY_VERSION" | cut -d. -f2)
+          if [ "$MAJOR" -lt 2 ] || { [ "$MAJOR" -eq 2 ] && [ "$MINOR" -lt 4 ]; }; then
+            echo "FAIL: expected Ruby >= 2.4, got $RUBY_VERSION"
+            exit 1
+          fi
+          echo "PASS: Ruby $RUBY_VERSION satisfies >= 2.4"
+      - name: Assert gem is available
+        run: |
+          which gem || { echo "FAIL: gem not found on PATH"; exit 1; }
+          gem --version
+          echo "PASS: gem is available"
