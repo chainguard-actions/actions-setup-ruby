@@ -9,6 +9,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
 | v1 | [`v1`](https://github.com/chainguard-actions/actions-setup-ruby/tree/v1) | [`e932e7a`](https://github.com/actions/setup-ruby/commit/e932e7af67fc4a8fc77bd86b744acd4e42fe3543) |
+| v1.1.3 | [`v1.1.3`](https://github.com/chainguard-actions/actions-setup-ruby/tree/v1.1.3) | [`e932e7a`](https://github.com/actions/setup-ruby/commit/e932e7af67fc4a8fc77bd86b744acd4e42fe3543) |
 
 ## Privacy
 
